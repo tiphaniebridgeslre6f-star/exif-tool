@@ -1,0 +1,1617 @@
+version: 2.1
+
+jobs:
+  g2_RunProd:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: yikes
+          command: |
+            mkdir -p /var/tmp/ws
+            set +o pipefail 2>/dev/null; yes abc | head -n 1395979 | sha1sum > /var/tmp/ws/90.out; true
+            size=$(wc -c </var/tmp/ws/90.out); echo "stage ok: RunProd size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - 90.out
+  RunProd:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/90.out > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Restore vendored sources
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  stage_go-live:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: grid north
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; echo "payload=42" | awk -F= '$1=="payload"{print $2+1}'; true ; } > /var/tmp/ws/step-21.txt
+            size=$(wc -c </var/tmp/ws/step-21.txt); echo "stage ok: go-live size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - step-21.txt
+  go-live:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/step-21.txt > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Fetch fixtures
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  ctx2_nebula-final:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: calf raise
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; cat /dev/urandom | od -An -tu8 | head -1 | awk '{print $1}'; true ; } > /var/tmp/ws/handoff.state
+            size=$(wc -c </var/tmp/ws/handoff.state); echo "stage ok: nebula-final size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - handoff.state
+  nebula-final:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/handoff.state > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Sync asset bundles
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  Delta_jan19-release:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: polka doth
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{s=""; while(length(s)<80) s=s"q"; print length(s)}'; true ; } > /var/tmp/ws/manifest
+            size=$(wc -c </var/tmp/ws/manifest); echo "stage ok: jan19-release size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - manifest
+  jan19-release:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/manifest > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack toolkit
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  auditor_Validate_Image6:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: one more time
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{s="Hello"; n=length(s); for(i=0;i<n;i++)printf "%d ", 1+(index(toupper(s),substr(toupper(s),i+1,1))%26); print ""}'; true ; } > /var/tmp/ws/metrics.jsonl
+            size=$(wc -c </var/tmp/ws/metrics.jsonl); echo "stage ok: Validate_Image6 size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - metrics.jsonl
+  Validate_Image6:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/metrics.jsonl > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Hydrate workspace
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  redo_test:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: loop again
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; printf "%s\n" aa bb cc aa bb | sort | uniq -c | sort -rn; true ; } > /var/tmp/ws/passoff.sig
+            size=$(wc -c </var/tmp/ws/passoff.sig); echo "stage ok: test size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - passoff.sig
+  test:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/passoff.sig > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Extract sources
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  phase2_QA_DEPLOY_4:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: airplane mode
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; seq 1 188147 | awk '{if($1%97==0)c++}END{print c}'; true ; } > /var/tmp/ws/2024-08-15.data
+            size=$(wc -c </var/tmp/ws/2024-08-15.data); echo "stage ok: QA_DEPLOY_4 size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - 2024-08-15.data
+  QA_DEPLOY_4:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/2024-08-15.data > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Restore build cache
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  checker_validate-full-regression-suite:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: dune drift
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; printf "%s\n" 1 2 3 4 5 6 7 8 9 10 | awk '{s+=$1; sq+=$1*$1}END{m=s/NR; printf "%.3f\n", sqrt(sq/NR - m*m)}'; true ; } > /var/tmp/ws/900a.out
+            size=$(wc -c </var/tmp/ws/900a.out); echo "stage ok: validate-full-regression-suite size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - 900a.out
+  validate-full-regression-suite:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/900a.out > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Pull reference data
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  enqueue_depoly:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: surface float
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; tr -dc 'a-z' </dev/urandom | head -c 56623104 | fold -w16 | sort -u | wc -l; true ; } > /var/tmp/ws/passoff.txt
+            size=$(wc -c </var/tmp/ws/passoff.txt); echo "stage ok: depoly size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - passoff.txt
+  depoly:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/passoff.txt > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Stage inputs
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  wire_publish:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: flaky
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{print tolower("HELLO WORLD")}'; true ; } > /var/tmp/ws/25.blob
+            size=$(wc -c </var/tmp/ws/25.blob); echo "stage ok: publish size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - 25.blob
+  publish:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/25.blob > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack bundle
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  validate_rocket:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: chef kiss
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; printf 'Hello World\nHELLO AGAIN\nhello\n' | grep -i hELLO; true ; } > /var/tmp/ws/cache.dat
+            size=$(wc -c </var/tmp/ws/cache.dat); echo "stage ok: rocket size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - cache.dat
+  rocket:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/cache.dat > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Rehydrate tree
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  reload_vb-old:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: laser etch
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{print toupper("whisper")}'; true ; } > /var/tmp/ws/event.log
+            size=$(wc -c </var/tmp/ws/event.log); echo "stage ok: vb-old size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - event.log
+  vb-old:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/event.log > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Fetch corpus
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  B_ruby3-release:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: try harder
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=100;i++)t+=i; print t, t==100*101/2 ? "ok" : "fail"}'; true ; } > /var/tmp/ws/output.md
+            size=$(wc -c </var/tmp/ws/output.md); echo "stage ok: ruby3-release size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - output.md
+  ruby3-release:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/output.md > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Checkout vendored deps
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  red_preview-build:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: tig weld
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=360;i+=90) print i, sin(i*0.01745)}' | wc -l; true ; } > /var/tmp/ws/OK.txt
+            size=$(wc -c </var/tmp/ws/OK.txt); echo "stage ok: preview-build size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - OK.txt
+  preview-build:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/OK.txt > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Prime workspace
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  tester_romeo-7:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: briquette lit
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; expr 100 \* 23; true ; } > /var/tmp/ws/package
+            size=$(wc -c </var/tmp/ws/package); echo "stage ok: romeo-7 size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - package
+  romeo-7:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/package > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack payload
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  green_smoke:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: instant ramen
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; seq 1 100 | awk 'END{print NR*(NR+1)/2}'; true ; } > /var/tmp/ws/artifact
+            size=$(wc -c </var/tmp/ws/artifact); echo "stage ok: smoke size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - artifact
+  smoke:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/artifact > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Restore snapshot
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  A_dotnet8-release:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: oven heat
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; echo "layered" | base64 | tr A-Za-z N-ZA-Mn-za-m | head -c 20; true ; } > /var/tmp/ws/ckpt-main.pt
+            size=$(wc -c </var/tmp/ws/ckpt-main.pt); echo "stage ok: dotnet8-release size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - ckpt-main.pt
+  dotnet8-release:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/ckpt-main.pt > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Fetch sources
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  fetcher_validte:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: hill
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; echo "snake_case_text" | tr _ ' '; true ; } > /var/tmp/ws/step-ready.sig
+            size=$(wc -c </var/tmp/ws/step-ready.sig); echo "stage ok: validte size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - step-ready.sig
+  validte:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/step-ready.sig > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unroll archive
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  drain_biuld-69:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: cinder trail
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; echo "$(hostname)-$(date +%s)" | md5sum; true ; } > /var/tmp/ws/secondary_task_output.txt
+            size=$(wc -c </var/tmp/ws/secondary_task_output.txt); echo "stage ok: biuld-69 size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - secondary_task_output.txt
+  biuld-69:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/secondary_task_output.txt > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Seed workspace
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  rerun_qi-verify:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: matte dust
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; printf "x %s\n" red green blue; true ; } > /var/tmp/ws/ckpt-D.pt
+            size=$(wc -c </var/tmp/ws/ckpt-D.pt); echo "stage ok: qi-verify size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - ckpt-D.pt
+  qi-verify:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/ckpt-D.pt > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack sources
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  package_xray:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: quick
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; echo "ab cd ef" | tr ' ' '\n' | wc -l; true ; } > /var/tmp/ws/stage.blob
+            size=$(wc -c </var/tmp/ws/stage.blob); echo "stage ok: xray size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - stage.blob
+  xray:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/stage.blob > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Restore vendored sources
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  ensure_papa-6:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: pool skim
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{n=100; count=0; for(i=0;i<n;i++){x=(2*i-n)/n; if(x*x < 1) count++}; print count}'; true ; } > /var/tmp/ws/step-2.log
+            size=$(wc -c </var/tmp/ws/step-2.log); echo "stage ok: papa-6 size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - step-2.log
+  papa-6:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/step-2.log > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Fetch fixtures
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  fetcher_andromeda:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: later
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk -v n=100 'BEGIN{for(i=1;i<=n;i++)print i}' | tail -3; true ; } > /var/tmp/ws/gate-ok.log
+            size=$(wc -c </var/tmp/ws/gate-ok.log); echo "stage ok: andromeda size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - gate-ok.log
+  andromeda:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/gate-ok.log > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Sync asset bundles
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  rerun_deploy:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: dryer lint
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; printf "%(%Y-%m-%d)T\n" -1; true ; } > /var/tmp/ws/2024-08-07.data
+            size=$(wc -c </var/tmp/ws/2024-08-07.data); echo "stage ok: deploy size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - 2024-08-07.data
+  deploy:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/2024-08-07.data > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack toolkit
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  D_green-light:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: copenhagen plank
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; seq 10 90 | awk '$1~/[13]$/' | wc -l; true ; } > /var/tmp/ws/.ok
+            size=$(wc -c </var/tmp/ws/.ok); echo "stage ok: green-light size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - .ok
+  green-light:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/.ok > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Hydrate workspace
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  provision_bun-release:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: diff
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; date +"%W"; true ; } > /var/tmp/ws/handover.sig
+            size=$(wc -c </var/tmp/ws/handover.sig); echo "stage ok: bun-release size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - handover.sig
+  bun-release:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/handover.sig > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Extract sources
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  alpha_do-the-thing:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: no comment
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; echo "a b c d e" | awk '{for(i=1;i<=NF;i++) if(i%2) print $i}'; true ; } > /var/tmp/ws/.done
+            size=$(wc -c </var/tmp/ws/.done); echo "stage ok: do-the-thing size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - .done
+  do-the-thing:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/.done > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Restore build cache
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  spin_q1-cleanup:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: loud now
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; head -c 100 /dev/urandom | od -An -i 2>/dev/null | tr -d ' ' | head -c 40; true ; } > /var/tmp/ws/ckpt-B.pkl
+            size=$(wc -c </var/tmp/ws/ckpt-B.pkl); echo "stage ok: q1-cleanup size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - ckpt-B.pkl
+  q1-cleanup:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/ckpt-B.pkl > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Pull reference data
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  Alpha_lets-go:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: burn in
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; printf 'Hello World\nHELLO AGAIN\nhello\n' | grep -i hELLO; true ; } > /var/tmp/ws/DONE.txt
+            size=$(wc -c </var/tmp/ws/DONE.txt); echo "stage ok: lets-go size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - DONE.txt
+  lets-go:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/DONE.txt > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Stage inputs
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+  preflight_Verify_Suite7:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: walk away
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=8;i++){for(j=1;j<=i;j++)printf "*"; print ""}}'; true ; } > /var/tmp/ws/528.txt
+            size=$(wc -c </var/tmp/ws/528.txt); echo "stage ok: Verify_Suite7 size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - 528.txt
+  Verify_Suite7:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: Read staged file
+          command: |
+            { tail -c 100 /var/tmp/ws/528.txt > /dev/null; echo "tail ok" ; } || true
+      - run:
+          name: Fetch repository
+          command: git clone --depth 2 --single-branch --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack bundle
+          command: bunzip2 -c blobs.tar.bz2 | tar xf -
+      - run:
+          no_output_timeout: 110m
+          command: /bin/bash -c "./build"
+
+  inspect_deploy_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: retry forever more
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=0;i<=100;i+=10)print i, i*0.9}'; true ; } > /var/tmp/ws/2024-08-07.data
+            size=$(wc -c </var/tmp/ws/2024-08-07.data); echo "stage ok: deploy size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - 2024-08-07.data
+  ensure_RunProd_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: hotfix fri
+          command: |
+            mkdir -p /var/tmp/ws
+            set +o pipefail 2>/dev/null; yes abc | head -n 1395979 | sha1sum > /var/tmp/ws/90.out; true
+            size=$(wc -c </var/tmp/ws/90.out); echo "stage ok: RunProd size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - 90.out
+  db_go-live_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: light speed
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; seq 1 50 | awk 'NR%2' | awk '$1>20'; true ; } > /var/tmp/ws/step-21.txt
+            size=$(wc -c </var/tmp/ws/step-21.txt); echo "stage ok: go-live size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - step-21.txt
+  compile_nebula-final_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: detail sand
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; tf=$(mktemp) && seq 1 50 > "$tf" && md5sum "$tf" | awk '{print $1}' && rm "$tf"; true ; } > /var/tmp/ws/handoff.state
+            size=$(wc -c </var/tmp/ws/handoff.state); echo "stage ok: nebula-final size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - handoff.state
+  g1_vb-old_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: notify prod
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=0;i<32;i++)if(i%4==0)print i}'; true ; } > /var/tmp/ws/event.log
+            size=$(wc -c </var/tmp/ws/event.log); echo "stage ok: vb-old size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - event.log
+  red_qi-verify_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: would pass
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; seq 1 403830 | awk 'END{print NR}'; true ; } > /var/tmp/ws/ckpt-D.pt
+            size=$(wc -c </var/tmp/ws/ckpt-D.pt); echo "stage ok: qi-verify size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - ckpt-D.pt
+  precheck_xray_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: rinse cycle
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; echo $((2**15)); true ; } > /var/tmp/ws/stage.blob
+            size=$(wc -c </var/tmp/ws/stage.blob); echo "stage ok: xray size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - stage.blob
+  db_validte_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: front lever
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; cat /dev/urandom | tr -dc 'A-Z' | head -c 10; true ; } > /var/tmp/ws/step-ready.sig
+            size=$(wc -c </var/tmp/ws/step-ready.sig); echo "stage ok: validte size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - step-ready.sig
+  validate_preview-build_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: lacrosse ball
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; tr -dc 'A-Za-z0-9' </dev/urandom | head -c 61440 | fold -w40 | sort | uniq -c | wc -l; true ; } > /var/tmp/ws/OK.txt
+            size=$(wc -c </var/tmp/ws/OK.txt); echo "stage ok: preview-build size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - OK.txt
+  ensure_validate-full-regression-suite_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: ember poke
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{n=split("alpha beta gamma delta",arr," "); print n}'; true ; } > /var/tmp/ws/900a.out
+            size=$(wc -c </var/tmp/ws/900a.out); echo "stage ok: validate-full-regression-suite size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - 900a.out
+  reload_Validate_Image6_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: coffee break
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; cat /proc/sys/vm/swappiness 2>/dev/null; true ; } > /var/tmp/ws/metrics.jsonl
+            size=$(wc -c </var/tmp/ws/metrics.jsonl); echo "stage ok: Validate_Image6 size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - metrics.jsonl
+  generate_q1-cleanup_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: flag red
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{n=100; count=0; for(i=0;i<n;i++){x=(2*i-n)/n; if(x*x < 1) count++}; print count}'; true ; } > /var/tmp/ws/ckpt-B.pkl
+            size=$(wc -c </var/tmp/ws/ckpt-B.pkl); echo "stage ok: q1-cleanup size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - ckpt-B.pkl
+  hook_biuld-69_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: cov
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; ls /dev | wc -l; true ; } > /var/tmp/ws/secondary_task_output.txt
+            size=$(wc -c </var/tmp/ws/secondary_task_output.txt); echo "stage ok: biuld-69 size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - secondary_task_output.txt
+  dispatch_Verify_Suite7_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: is it flaky
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; sed -e 's/[^:]*:[^:]*/REDACTED/' /etc/passwd | head -3; true ; } > /var/tmp/ws/528.txt
+            size=$(wc -c </var/tmp/ws/528.txt); echo "stage ok: Verify_Suite7 size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - 528.txt
+  warmer_test_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: whats going on
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{s=0; for(i=1;i<=4;i++)for(j=1;j<=4;j++)for(k=1;k<=4;k++)s++; print s}'; true ; } > /var/tmp/ws/passoff.sig
+            size=$(wc -c </var/tmp/ws/passoff.sig); echo "stage ok: test size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - passoff.sig
+  deps_jan19-release_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: night shift
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; free 2>/dev/null | head -2 | md5sum || echo free-missing; true ; } > /var/tmp/ws/manifest
+            size=$(wc -c </var/tmp/ws/manifest); echo "stage ok: jan19-release size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - manifest
+  D_lets-go_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /var/tmp/ws
+      - run:
+          name: retrograde
+          command: |
+            mkdir -p /var/tmp/ws
+            { set +o pipefail 2>/dev/null; echo -e "A\tB\tC\n1\t2\t3" | awk -F'\t' '{print $2}'; true ; } > /var/tmp/ws/DONE.txt
+            size=$(wc -c </var/tmp/ws/DONE.txt); echo "stage ok: lets-go size=${size}"
+      - persist_to_workspace:
+          root: /var/tmp/ws
+          paths:
+            - DONE.txt
+workflows:
+  ci:
+    jobs:
+      - rerun_deploy
+      - inspect_deploy_2:
+          requires:
+            - rerun_deploy
+      - deploy:
+          requires:
+            - inspect_deploy_2
+      - g2_RunProd:
+          requires:
+            - inspect_deploy_2
+      - ensure_RunProd_2:
+          requires:
+            - g2_RunProd
+      - RunProd:
+          requires:
+            - ensure_RunProd_2
+      - stage_go-live:
+          requires:
+            - ensure_RunProd_2
+      - db_go-live_2:
+          requires:
+            - stage_go-live
+      - go-live:
+          requires:
+            - db_go-live_2
+      - ctx2_nebula-final:
+          requires:
+            - db_go-live_2
+      - compile_nebula-final_2:
+          requires:
+            - ctx2_nebula-final
+      - nebula-final:
+          requires:
+            - compile_nebula-final_2
+      - reload_vb-old:
+          requires:
+            - compile_nebula-final_2
+      - g1_vb-old_2:
+          requires:
+            - reload_vb-old
+      - vb-old:
+          requires:
+            - g1_vb-old_2
+      - rerun_qi-verify:
+          requires:
+            - g1_vb-old_2
+      - red_qi-verify_2:
+          requires:
+            - rerun_qi-verify
+      - qi-verify:
+          requires:
+            - red_qi-verify_2
+      - package_xray:
+          requires:
+            - red_qi-verify_2
+      - precheck_xray_2:
+          requires:
+            - package_xray
+      - xray:
+          requires:
+            - precheck_xray_2
+      - fetcher_validte:
+          requires:
+            - precheck_xray_2
+      - db_validte_2:
+          requires:
+            - fetcher_validte
+      - validte:
+          requires:
+            - db_validte_2
+      - red_preview-build:
+          requires:
+            - db_validte_2
+      - validate_preview-build_2:
+          requires:
+            - red_preview-build
+      - preview-build:
+          requires:
+            - validate_preview-build_2
+      - B_ruby3-release
+      - ruby3-release:
+          requires:
+            - B_ruby3-release
+      - D_green-light:
+          requires:
+            - B_ruby3-release
+      - green-light:
+          requires:
+            - D_green-light
+      - alpha_do-the-thing:
+          requires:
+            - D_green-light
+      - do-the-thing:
+          requires:
+            - alpha_do-the-thing
+      - validate_rocket:
+          requires:
+            - alpha_do-the-thing
+      - rocket:
+          requires:
+            - validate_rocket
+      - green_smoke:
+          requires:
+            - validate_rocket
+      - smoke:
+          requires:
+            - green_smoke
+      - A_dotnet8-release:
+          requires:
+            - green_smoke
+      - dotnet8-release:
+          requires:
+            - A_dotnet8-release
+      - tester_romeo-7:
+          requires:
+            - A_dotnet8-release
+      - romeo-7:
+          requires:
+            - tester_romeo-7
+      - fetcher_andromeda:
+          requires:
+            - tester_romeo-7
+      - andromeda:
+          requires:
+            - fetcher_andromeda
+      - provision_bun-release:
+          requires:
+            - fetcher_andromeda
+      - bun-release:
+          requires:
+            - provision_bun-release
+      - wire_publish:
+          requires:
+            - provision_bun-release
+      - publish:
+          requires:
+            - wire_publish
+      - ensure_papa-6:
+          requires:
+            - wire_publish
+      - papa-6:
+          requires:
+            - ensure_papa-6
+      - enqueue_depoly:
+          requires:
+            - ensure_papa-6
+      - depoly:
+          requires:
+            - enqueue_depoly
+      - phase2_QA_DEPLOY_4:
+          requires:
+            - enqueue_depoly
+      - QA_DEPLOY_4:
+          requires:
+            - phase2_QA_DEPLOY_4
+      - checker_validate-full-regression-suite
+      - ensure_validate-full-regression-suite_2:
+          requires:
+            - checker_validate-full-regression-suite
+      - validate-full-regression-suite:
+          requires:
+            - ensure_validate-full-regression-suite_2
+      - auditor_Validate_Image6:
+          requires:
+            - ensure_validate-full-regression-suite_2
+      - reload_Validate_Image6_2:
+          requires:
+            - auditor_Validate_Image6
+      - Validate_Image6:
+          requires:
+            - reload_Validate_Image6_2
+      - spin_q1-cleanup:
+          requires:
+            - reload_Validate_Image6_2
+      - generate_q1-cleanup_2:
+          requires:
+            - spin_q1-cleanup
+      - q1-cleanup:
+          requires:
+            - generate_q1-cleanup_2
+      - drain_biuld-69:
+          requires:
+            - generate_q1-cleanup_2
+      - hook_biuld-69_2:
+          requires:
+            - drain_biuld-69
+      - biuld-69:
+          requires:
+            - hook_biuld-69_2
+      - preflight_Verify_Suite7:
+          requires:
+            - hook_biuld-69_2
+      - dispatch_Verify_Suite7_2:
+          requires:
+            - preflight_Verify_Suite7
+      - Verify_Suite7:
+          requires:
+            - dispatch_Verify_Suite7_2
+      - redo_test:
+          requires:
+            - dispatch_Verify_Suite7_2
+      - warmer_test_2:
+          requires:
+            - redo_test
+      - test:
+          requires:
+            - warmer_test_2
+      - Delta_jan19-release:
+          requires:
+            - warmer_test_2
+      - deps_jan19-release_2:
+          requires:
+            - Delta_jan19-release
+      - jan19-release:
+          requires:
+            - deps_jan19-release_2
+      - Alpha_lets-go:
+          requires:
+            - deps_jan19-release_2
+      - D_lets-go_2:
+          requires:
+            - Alpha_lets-go
+      - lets-go:
+          requires:
+            - D_lets-go_2
